@@ -1,5 +1,5 @@
 -- =========================================================================
---   💠 KEY STEAM TRUONG PHONG - PRO EDITION (PHẦN 1/4) 💠
+--   💠 KEY STEAM NASI RENDANG HUB - PRO EDITION (PHẦN 1/4) 💠
 -- =========================================================================
 
 local TweenService = game:GetService("TweenService")
@@ -13,9 +13,9 @@ local LocalPlayer = Players.LocalPlayer
 local KeyUrl = "https://link4m.net/PBXEqaD"
 local TargetScriptUrl = "https://raw.githubusercontent.com/robvxs24/freemium/refs/heads/main/saegg.lua"
 
-local KeyFileName = "Phongkey"
-local TrialFileName = "Phongkey"
-local TRIAL_DURATION = 3.000.000 -- 50000 phút = 3.000.000 giây
+local KeyFileName = "NasiRendang_KeyData.json"
+local TrialFileName = "NasiRendang_TrialData.json"
+local TRIAL_DURATION = 3.000.000 -- 50000 phút = 3.000.000giây
 
 local InitialGuis = {}
 local ScriptConnections = {}
@@ -104,7 +104,7 @@ local function GenerateTodayKey()
     return string.format("nasirendangfree-%04X-%04X-%04X", v1, v2, v3)
 end
 -- =========================================================================
---   💠 KEY STEAM TRUONG PHONG HUB - PRO EDITION (PHẦN 2/4) 💠
+--   💠 KEY STEAM NASI RENDANG HUB - PRO EDITION (PHẦN 2/4) 💠
 -- =========================================================================
 
 local function TakeGuiSnapshot()
@@ -122,7 +122,7 @@ end
 local function ApplyScreenLockdown()
     if not ActiveBlurEffect then
         ActiveBlurEffect = Instance.new("BlurEffect")
-        ActiveBlurEffect.Name = "TRUONGPHONG"
+        ActiveBlurEffect.Name = "NasiRendang_LockdownBlur"
         ActiveBlurEffect.Size = 28
         ActiveBlurEffect.Parent = Lighting
     end
@@ -318,7 +318,7 @@ local function ShowLiveToast(titleText, initialSeconds, color)
     end)
 end
 -- =========================================================================
---   💠 KEY STEAM TRUONG PHONG HUB - PRO EDITION (PHẦN 3/4) 💠
+--   💠 KEY STEAM NASI RENDANG HUB - PRO EDITION (PHẦN 3/4) 💠
 -- =========================================================================
 
 local Languages = {
@@ -375,7 +375,7 @@ OpenKeySystemUI = function()
     if CoreGui:FindFirstChild("NasiRendang_GetKeyUI") then CoreGui.NasiRendang_GetKeyUI:Destroy() end
 
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "NasiRendang_GetKeyUI"
+    ScreenGui.Name = "Lyberphong_GetKeyUI"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     pcall(function() ScreenGui.Parent = CoreGui end)
@@ -383,7 +383,7 @@ OpenKeySystemUI = function()
 
     -- Khung Form Chính Bo Góc Chuyên Nghiệp (Kích thước 430 x 365)
     local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
+    MainFrame.Name = "Phong"
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.Size = UDim2.new(0, 430, 0, 365)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -433,7 +433,7 @@ OpenKeySystemUI = function()
     local MiniLogoTxt = Instance.new("TextLabel")
     MiniLogoTxt.Size = UDim2.new(1, 0, 1, 0)
     MiniLogoTxt.BackgroundTransparency = 1
-    MiniLogoTxt.Text = "PHONG"
+    MiniLogoTxt.Text = "NRL"
     MiniLogoTxt.TextColor3 = Color3.fromRGB(255, 255, 255)
     MiniLogoTxt.TextSize = 9
     MiniLogoTxt.Font = Enum.Font.GothamBlack
@@ -510,7 +510,7 @@ OpenKeySystemUI = function()
     local CenterLogoTxt = Instance.new("TextLabel")
     CenterLogoTxt.Size = UDim2.new(1, 0, 1, 0)
     CenterLogoTxt.BackgroundTransparency = 1
-    CenterLogoTxt.Text = "PHONG"
+    CenterLogoTxt.Text = "NRL"
     CenterLogoTxt.TextColor3 = Color3.fromRGB(255, 255, 255)
     CenterLogoTxt.TextSize = 18
     CenterLogoTxt.Font = Enum.Font.GothamBlack
@@ -634,7 +634,7 @@ OpenKeySystemUI = function()
     StatusMsg.ZIndex = 31
     StatusMsg.Parent = MainFrame
     -- =========================================================================
---   💠 KEY STEAM TRUONG PHONG HUB - PRO EDITION (PHẦN 4/4) 💠
+--   💠 KEY STEAM TRUONG PHONG HUB- PRO EDITION (PHẦN 4/4) 💠
 -- =========================================================================
 
     -- MODAL CHỌN NGÔN NGỮ (TIẾNG VIỆT & ENGLISH)
@@ -813,7 +813,7 @@ OpenKeySystemUI = function()
         local todayKey = GenerateTodayKey()
 
         if string.lower(enteredKey) == string.lower(todayKey) then
-            Save500000hKey()
+            Save5000hKey()
             CheckKeyBtn.Text = "SUCCESS"
             CheckKeyBtn.BackgroundColor3 = Color3.fromRGB(22, 101, 52)
             CheckStroke.Color = Color3.fromRGB(74, 222, 128)
