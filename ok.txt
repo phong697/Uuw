@@ -1,0 +1,43 @@
+-- =================================================================
+-- TRÌNH KHỞI CHẠY GIAO DIỆN PHONG HUB TỪ LINK GITHUB CỦA BẠN
+-- =================================================================
+
+-- Tải trực tiếp mã giao diện llll.txt từ kho lưu trữ của bạn
+local Success, InterfaceCode = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/phong697/Uuw/refs/heads/main/llll.txt")
+end)
+
+if Success and InterfaceCode then
+    -- Biên dịch thư viện đồ họa vào môi trường Roblox
+    local Initialize_UI = loadstring(InterfaceCode)
+    if Initialize_UI then
+        local phongHub_UI = Initialize_UI()
+        
+        -- Tiến hành vẽ một bảng menu thử nghiệm bằng thư viện vừa nạp
+        local Window = phongHub_UI:CreateWindow({
+            Name = "phongdz Hub",
+            Size = UDim2.fromOffset(550, 380)
+        })
+        
+        local Tab = Window:CreateTab({ Name = "Main Farm" })
+        local Section = Tab:CreateSection({ Name = "Chức năng tự động" })
+        
+        Section:Toggle({
+            Name = "Auto Nhặt Trứng (Steal an Egg)",
+            Default = false,
+            Callback = function(State)
+                print("Trạng thái Auto Farm Trứng:", State)
+            end
+        })
+        
+        phongHub_UI:Notify({
+            Title = "phongdz Hub",
+            Text = "Kết nối liên kết dữ liệu thành công!",
+            Duration = 5
+        })
+    else
+        warn("[Lỗi] Lỗi biên dịch cú pháp mã nguồn bên trong file txt.")
+    end
+else
+    warn("[Lỗi] Không thể nạp văn bản thô từ link GitHub. Kiểm tra lại kết nối mạng!")
+end
