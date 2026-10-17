@@ -1,24 +1,25 @@
 --[[
     ========================================================================
-    PHONGHUB PRESTIGE - VERSION 5.0 (ADVANCED MULTI-TAB EXPANSION)
+    PHONGHUB PRESTIGE INFINITY - VERSION 7.0 (FULL EXPLOIT EXTRA PACK)
     ========================================================================
-    Description: Multi-page Graphical User Interface natively compiled for 
-    Delta Executor. Features 4 interactive tabs separating Farming, Hatching, 
-    Upgrades, and Events with non-destructive back-end coroutine threads.
+    Description: Multi-tab layout built exclusively for Delta Executor.
+    Includes highly aggressive network remote firing loops, structural 
+    bypasses, a dynamic modular tab interface, and native Anti-AFK integration.
     ========================================================================
 ]]
 
 local CoreGui = game:GetService("CoreGui")
 if CoreGui:FindFirstChild("PhongHub_SAE") then
-    CoreGui:FindFirstChild("PhongHub_SAE"):Destroy()
+    game:FindFirstChild("PhongHub_SAE"):Destroy()
 end
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
--- Configuration Table
+-- Central Configuration Database Setup
 if not _G.PhongHub_Config then
     _G.PhongHub_Config = {
         AutoSteal = false,
@@ -27,22 +28,39 @@ if not _G.PhongHub_Config then
         AutoHatch = false,
         SelectedEggType = "Common",
         AutoUpgradeTreadmill = false,
-        AutoUpgradeBase = false
+        AutoUpgradeBase = false,
+        AntiAFK = true, -- Defaulted to True for security
+        WalkSpeedActive = false,
+        JumpPowerActive = false,
+        WS_Value = 16,
+        JP_Value = 50
     }
 end
 
--- Screen Setup
+-- ========================================================================
+-- ANTI-AFK IMMUNITY BYPASS FOR ROBLOX KICK CODES
+-- ========================================================================
+pcall(function()
+    LocalPlayer.Idled:Connect(function()
+        if _G.PhongHub_Config.AntiAFK then
+            VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        end
+    end)
+end)
+
+-- Main UI Root Construction
 local PhongHub = Instance.new("ScreenGui")
 PhongHub.Name = "PhongHub_SAE"
 PhongHub.Parent = CoreGui
 PhongHub.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Main Container Window
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 520, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -260, 0.4, -180)
-MainFrame.BackgroundColor3 = Color3.fromRGB(13, 13, 18)
+MainFrame.Size = UDim2.new(0, 530, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -265, 0.4, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -58,11 +76,11 @@ UIStroke.Color = Color3.fromRGB(0, 180, 255)
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 UIStroke.Parent = MainFrame
 
--- Top Title Bar
+-- Application Navigation Header
 local Header = Instance.new("Frame")
 Header.Name = "Header"
 Header.Size = UDim2.new(1, 0, 0, 45)
-Header.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+Header.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
 Header.BorderSizePixel = 0
 Header.Parent = MainFrame
 
@@ -71,23 +89,22 @@ HeaderCorner.CornerRadius = UDim.new(0, 12)
 HeaderCorner.Parent = Header
 
 local Title = Instance.new("TextLabel")
-Title.Name = "Title"
 Title.Size = UDim2.new(1, -50, 1, 0)
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "PhongHub Premium v5.0 | Steal An Egg"
+Title.Text = "PhongHub Premium v7.0 | Steal An Egg"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
+Title.TextSize = 15
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = Header
 
--- Left Navigation Tab Panel
+-- Multi-Page Layout Management Framework
 local TabPanel = Instance.new("Frame")
 TabPanel.Name = "TabPanel"
-TabPanel.Size = UDim2.new(0, 130, 1, -45)
+TabPanel.Size = UDim2.new(0, 140, 1, -45)
 TabPanel.Position = UDim2.new(0, 0, 0, 45)
-TabPanel.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+TabPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 TabPanel.BorderSizePixel = 0
 TabPanel.Parent = MainFrame
 
@@ -96,11 +113,10 @@ TabListLayout.Padding = UDim.new(0, 4)
 TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TabListLayout.Parent = TabPanel
 
--- Right Viewport Container
 local PagesContainer = Instance.new("Frame")
 PagesContainer.Name = "PagesContainer"
-PagesContainer.Size = UDim2.new(1, -140, 1, -55)
-PagesContainer.Position = UDim2.new(0, 135, 0, 50)
+PagesContainer.Size = UDim2.new(1, -150, 1, -55)
+PagesContainer.Position = UDim2.new(0, 145, 0, 50)
 PagesContainer.BackgroundTransparency = 1
 PagesContainer.Parent = MainFrame
 
@@ -109,23 +125,21 @@ local Tabs = {}
 
 local function CreateTab(tabName, order)
     local TabButton = Instance.new("TextButton")
-    TabButton.Name = tabName .. "Tab"
     TabButton.Size = UDim2.new(1, 0, 0, 40)
-    TabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+    TabButton.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     TabButton.BorderSizePixel = 0
     TabButton.Text = tabName
-    TabButton.TextColor3 = Color3.fromRGB(160, 160, 160)
+    TabButton.TextColor3 = Color3.fromRGB(150, 150, 150)
     TabButton.TextSize = 13
     TabButton.Font = Enum.Font.GothamSemibold
     TabButton.LayoutOrder = order
     TabButton.Parent = TabPanel
 
     local PageFrame = Instance.new("ScrollingFrame")
-    PageFrame.Name = tabName .. "Page"
     PageFrame.Size = UDim2.new(1, 0, 1, 0)
     PageFrame.BackgroundTransparency = 1
     PageFrame.Visible = false
-    PageFrame.CanvasSize = UDim2.new(0, 0, 1, 100)
+    PageFrame.CanvasSize = UDim2.new(0, 0, 1, 150)
     PageFrame.ScrollBarThickness = 4
     PageFrame.Parent = PagesContainer
 
@@ -136,10 +150,10 @@ local function CreateTab(tabName, order)
 
     TabButton.MouseButton1Click:Connect(function()
         for _, p in pairs(Pages) do p.Visible = false end
-        for _, t in pairs(Tabs) do t.TextColor3 = Color3.fromRGB(160, 160, 160) t.BackgroundColor3 = Color3.fromRGB(22, 22, 30) end
+        for _, t in pairs(Tabs) do t.TextColor3 = Color3.fromRGB(150, 150, 150) t.BackgroundColor3 = Color3.fromRGB(20, 20, 28) end
         PageFrame.Visible = true
         TabButton.TextColor3 = Color3.fromRGB(0, 180, 255)
-        TabButton.BackgroundColor3 = Color3.fromRGB(26, 26, 38)
+        TabButton.BackgroundColor3 = Color3.fromRGB(24, 24, 36)
     end)
 
     Pages[tabName] = PageFrame
@@ -147,11 +161,11 @@ local function CreateTab(tabName, order)
     return PageFrame
 end
 
--- Functional Components Inside Pages
+-- Component Interface Subsystems Builder
 local function AddToggle(page, text, configKey)
     local ToggleFrame = Instance.new("Frame")
     ToggleFrame.Size = UDim2.new(1, -10, 0, 45)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
     ToggleFrame.BorderSizePixel = 0
     ToggleFrame.Parent = page
 
@@ -171,34 +185,22 @@ local function AddToggle(page, text, configKey)
     Label.Parent = ToggleFrame
 
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0.25, 0, 0, 31)
-    Button.Position = UDim2.new(0.72, 0, 0.5, -15)
-    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    Button.Text = "OFF"
-    Button.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Button.Size = UDim2.new(0.24, 0, 0, 30)
+    Button.Position = UDim2.new(0.73, 0, 0.5, -15)
+    Button.BackgroundColor3 = _G.PhongHub_Config[configKey] and Color3.fromRGB(0, 150, 70) or Color3.fromRGB(40, 40, 52)
+    Button.Text = _G.PhongHub_Config[configKey] and "ON" or "OFF"
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
     Button.TextSize = 12
     Button.Font = Enum.Font.GothamBold
     Button.Parent = ToggleFrame
-
-    local bCorner = Instance.new("UICorner")
-    bCorner.CornerRadius = UDim.new(0, 4)
-    bCorner.Parent = Button
-
-    if _G.PhongHub_Config[configKey] then
-        Button.BackgroundColor3 = Color3.fromRGB(0, 150, 70)
-        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Button.Text = "ON"
-    end
 
     Button.MouseButton1Click:Connect(function()
         _G.PhongHub_Config[configKey] = not _G.PhongHub_Config[configKey]
         if _G.PhongHub_Config[configKey] then
             Button.BackgroundColor3 = Color3.fromRGB(0, 150, 70)
-            Button.TextColor3 = Color3.fromRGB(255, 255, 255)
             Button.Text = "ON"
         else
-            Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            Button.TextColor3 = Color3.fromRGB(180, 180, 180)
+            Button.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
             Button.Text = "OFF"
         end
     end)
@@ -207,7 +209,7 @@ end
 local function AddDropdown(page, text, options, configKey)
     local DropFrame = Instance.new("Frame")
     DropFrame.Size = UDim2.new(1, -10, 0, 45)
-    DropFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
+    DropFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
     DropFrame.Parent = page
 
     local dCorner = Instance.new("UICorner")
@@ -226,87 +228,87 @@ local function AddDropdown(page, text, options, configKey)
     Label.Parent = DropFrame
 
     local OptBtn = Instance.new("TextButton")
-    OptBtn.Size = UDim2.new(0.45, 0, 0, 31)
+    OptBtn.Size = UDim2.new(0.45, 0, 0, 30)
     OptBtn.Position = UDim2.new(0.52, 0, 0.5, -15)
-    OptBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 45)
+    OptBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
     OptBtn.Text = _G.PhongHub_Config[configKey]
     OptBtn.TextColor3 = Color3.fromRGB(0, 180, 255)
     OptBtn.TextSize = 12
     OptBtn.Font = Enum.Font.GothamBold
     OptBtn.Parent = DropFrame
 
-    local index = 1
+    local idx = 1
     OptBtn.MouseButton1Click:Connect(function()
-        index = index + 1
-        if index > #options then index = 1 end
-        _G.PhongHub_Config[configKey] = options[index]
-        OptBtn.Text = options[index]
+        idx = idx + 1
+        if idx > #options then idx = 1 end
+        _G.PhongHub_Config[configKey] = options[idx]
+        OptBtn.Text = options[idx]
     end)
 end
 
--- Initialize Individual Modular Pages
-local FarmPage = CreateTab("Farming", 1)
-local HatchPage = CreateTab("Hatching", 2)
-local UpgradePage = CreateTab("Upgrades", 3)
-local EventPage = CreateTab("Events", 4)
+-- Instantiating Multiple Configuration Pages
+local AutomationTab = CreateTab("Farming Loops", 1)
+local IncubationTab = CreateTab("Egg Hatchery", 2)
+local ExpansionTab = CreateTab("Upgrades", 3)
+local CustomModTab = CreateTab("Exploits & Utility", 4)
 
--- Build Configuration Layouts
-AddToggle(FarmPage, "Auto Steal Eggs (Vòng lặp trộm)", "AutoSteal")
-AddToggle(FarmPage, "Auto Treadmill Speed (Tự tập chạy)", "AutoTreadmill")
+-- Dynamic Layout Population
+AddToggle(AutomationTab, "Auto Steal Eggs (Vòng lặp nhanh)", "AutoSteal")
+AddToggle(AutomationTab, "Auto Treadmill Speed (Tự luyện chạy)", "AutoTreadmill")
+AddToggle(AutomationTab, "Auto Event (Quét Drone & Event)", "AutoEvent")
 
-AddToggle(HatchPage, "Auto Hatch Eggs (Tự động mở trứng)", "AutoHatch")
-AddDropdown(HatchPage, "Chọn loại trứng cần ấp:", {"Common", "Uncommon", "Rare", "Legendary", "Divine", "Eternal"}, "SelectedEggType")
+AddToggle(IncubationTab, "Auto Open Eggs (Tự động mở trứng)", "AutoHatch")
+AddDropdown(IncubationTab, "Loại Trứng Chọn Sẵn:", {"Common", "Uncommon", "Rare", "Legendary", "Divine", "Eternal"}, "SelectedEggType")
 
-AddToggle(UpgradePage, "Auto Upgrade Treadmills", "AutoUpgradeTreadmill")
-AddToggle(UpgradePage, "Auto Upgrade Base Infrastructure", "AutoUpgradeBase")
+AddToggle(ExpansionTab, "Auto Upgrade Treadmills", "AutoUpgradeTreadmill")
+AddToggle(ExpansionTab, "Auto Upgrade Base Systems", "AutoUpgradeBase")
 
-AddToggle(EventPage, "Auto Farm Dr. Scramble / Drone Event", "AutoEvent")
+AddToggle(CustomModTab, "Chống Bị Treo Máy (Anti-AFK v2)", "AntiAFK")
+AddToggle(CustomModTab, "Bật Hack Tốc Độ Chạy (WalkSpeed)", "WalkSpeedActive")
+AddToggle(CustomModTab, "Bật Hack Nhảy Cao (JumpPower)", "JumpPowerActive")
 
--- Set Default Display Panel
-Pages["Farming"].Visible = true
-Tabs["Farming"].TextColor3 = Color3.fromRGB(0, 180, 255)
-
+-- Framework Visual Baseline Activation
+Pages["Farming Loops"].Visible = true
+Tabs["Farming Loops"].TextColor3 = Color3.fromRGB(0, 180, 255)
 -- ========================================================================
--- PIPELINE CONTROLLERS & EXECUTOR THREADS
+-- BACKEND EXPLOITATION NETWORK PIPELINES
 -- ========================================================================
-
-local function FireRemotes(name, ...)
-    for _, instance in pairs(ReplicatedStorage:GetDescendants()) do
-        if instance:IsA("RemoteEvent") and (instance.Name:lower() == name:lower() or instance.Name:lower():match(name:lower())) then
-            instance:FireServer(...)
-        end
-    end
+local function NetworkFire(remoteName, ...)
+for _, item in pairs(ReplicatedStorage:GetDescendants()) do
+if item:IsA("RemoteEvent") and (item.Name:lower() == remoteName:lower() or item.Name:lower():match(remoteName:lower())) then
+item:FireServer(...)
 end
-
-local function GetPlayerDropPen()
-    local target = nil
+end
+end
+local function LocateSecureDropZone()
+local zone = nil
 for _, b in pairs(workspace:GetChildren()) do
 if b.Name == LocalPlayer.Name or (b:IsA("Model") and b:FindFirstChild("Owner") and b.Owner.Value == LocalPlayer) then
-target = b:FindFirstChild("DropZone") or b:FindFirstChild("EggPen") or b:FindFirstChild("Deposit")
+zone = b:FindFirstChild("DropZone") or b:FindFirstChild("EggPen") or b:FindFirstChild("Deposit")
 end
 end
-if not target and workspace:FindFirstChild("PlayerBases") then
-local b = workspace.PlayerBases:FindFirstChild(LocalPlayer.Name)
-if b then target = b:FindFirstChild("DropZone") or b:FindFirstChild("EggPen") end
+if not zone and workspace:FindFirstChild("PlayerBases") then
+local myBase = workspace.PlayerBases:FindFirstChild(LocalPlayer.Name)
+if myBase then zone = myBase:FindFirstChild("DropZone") or myBase:FindFirstChild("EggPen") end
 end
-return target
+return zone
 end
--- Background Processing Module (Anti-Crash Sandbox Loops)
+-- 1. Automated Harvesting Loop Thread
 task.spawn(function()
 while task.wait(0.3) do
 if _G.PhongHub_Config.AutoSteal then
 pcall(function()
 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-local zone = GetPlayerDropPen()
-local container = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("EggSpawns") or workspace
-if root and zone then
-for _, egg in pairs(container:GetChildren()) do
+local targetZone = LocateSecureDropZone()
+local eggSpawns = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("EggSpawns") or workspace
+if root and targetZone then
+for _, egg in pairs(eggSpawns:GetChildren()) do
 if not _G.PhongHub_Config.AutoSteal then break end
 if egg:IsA("Model") and egg.Name:lower():match("egg") and not egg.Name:lower():match("zone") then
 root.CFrame = egg:GetPivot()
-task.wait(0.15)
-root.CFrame = zone:GetPivot()
-task.wait(0.15)
+task.wait(0.12)
+root.CFrame = targetZone:GetPivot()
+task.wait(0.12)
 end
 end
 end
@@ -314,67 +316,87 @@ end)
 end
 end
 end)
+-- 2. Treadmill & Auto Speed Processing Thread
 task.spawn(function()
 while task.wait(0.1) do
 if _G.PhongHub_Config.AutoTreadmill then
 pcall(function()
-FireRemotes("Train", true)
-FireRemotes("Click")
-FireRemotes("GainSpeed")
+NetworkFire("Train", true)
+NetworkFire("Click")
+NetworkFire("GainSpeed")
+NetworkFire("AddSpeed")
 end)
 end
 end
 end)
+-- 3. High-Frequency Remote Egg Opener Execution
 task.spawn(function()
-while task.wait(0.5) do
+while task.wait(0.4) do
 if _G.PhongHub_Config.AutoHatch then
 pcall(function()
--- Dynamic remote calling matching the selected string criteria
-FireRemotes("Hatch", _G.PhongHub_Config.SelectedEggType)
-FireRemotes("BuyEgg", _G.PhongHub_Config.SelectedEggType)
-FireRemotes("OpenEgg", _G.PhongHub_Config.SelectedEggType)
+NetworkFire("Hatch", _G.PhongHub_Config.SelectedEggType)
+NetworkFire("BuyEgg", _G.PhongHub_Config.SelectedEggType)
+NetworkFire("OpenEgg", _G.PhongHub_Config.SelectedEggType)
 end)
 end
 end
 end)
+-- 4. Infrastructure Multi-Upgrade Routing Thread
 task.spawn(function()
-while task.wait(1.5) do
-if _G.PhongHub_Config.AutoUpgradeTreadmill or _G.PhongHub_Config.AutoUpgradeBase then
+while task.wait(1.2) do
 pcall(function()
 if _G.PhongHub_Config.AutoUpgradeTreadmill then
-FireRemotes("UpgradeTreadmill")
-FireRemotes("BuyTreadmill")
+NetworkFire("UpgradeTreadmill")
+NetworkFire("BuyTreadmill")
 end
 if _G.PhongHub_Config.AutoUpgradeBase then
-FireRemotes("UpgradeBase")
-FireRemotes("UpgradePen")
+NetworkFire("UpgradeBase")
+NetworkFire("UpgradePen")
+NetworkFire("UpgradeZone")
 end
 end)
 end
-end
 end)
+-- 5. Dynamic High-Speed Event Teleporter Thread
 task.spawn(function()
-while task.wait(0.6) do
+while task.wait(0.5) do
 if _G.PhongHub_Config.AutoEvent then
 pcall(function()
 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 if root then
-for _, element in pairs(workspace:GetDescendants()) do
+for _, entity in pairs(workspace:GetDescendants()) do
 if not _G.PhongHub_Config.AutoEvent then break end
-local lowName = element.Name:lower()
-if (element:IsA("Model") or element:IsA("BasePart")) and (lowName:match("drone") or lowName:match("scramble") or lowName:match("token") or lowName:match("gift")) then
-root.CFrame = element:GetPivot()
-task.wait(0.2)
+local normalized = entity.Name:lower()
+if (entity:IsA("Model") or entity:IsA("BasePart")) and (normalized:match("drone") or normalized:match("scramble") or normalized:match("token") or normalized:match("gift")) then
+root.CFrame = entity:GetPivot()
+task.wait(0.15)
 end
 end
 end
-FireRemotes("ClaimEventReward")
-FireRemotes("CollectPart")
+NetworkFire("ClaimEventReward")
+NetworkFire("CollectPart")
 end)
 end
 end
 end)
--- Mobile HUD Quick Screen Button Setup
+-- 6. Character Physics Modifications (WalkSpeed / JumpPower Overrides)
+task.spawn(function()
+while task.wait(0.1) do
+pcall(function()
+local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+if hum then
+if _G.PhongHub_Config.WalkSpeedActive then
+hum.WalkSpeed = _G.PhongHub_Config.WS_Value or 100
+end
+if _G.PhongHub_Config.JumpPowerActive then
+hum.JumpPower = _G.PhongHub_Config.JP_Value or 120
+hum.UseJumpPower = true
+end
+end
+end)
+end
+end)
+-- Mobile Floating Control Icon Configuration
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "DeltaToggleButton"
 ToggleButton.Size = UDim2.new(0, 50, 0, 50)
@@ -388,10 +410,10 @@ ToggleButton.Parent = PhongHub
 local ToggleCorner = Instance.new("UICorner")
 ToggleCorner.CornerRadius = UDim.new(0, 25)
 ToggleCorner.Parent = ToggleButton
-local isVisible = true
+local visibleState = true
 ToggleButton.MouseButton1Click:Connect(function()
-isVisible = not isVisible
-MainFrame.Visible = isVisible
+visibleState = not visibleState
+MainFrame.Visible = visibleState
 end)
 local DestroyButton = Instance.new("TextButton")
 DestroyButton.Name = "DestroyButton"
@@ -410,12 +432,15 @@ _G.PhongHub_Config.AutoEvent = false
 _G.PhongHub_Config.AutoHatch = false
 _G.PhongHub_Config.AutoUpgradeTreadmill = false
 _G.PhongHub_Config.AutoUpgradeBase = false
+_G.PhongHub_Config.AntiAFK = false
+_G.PhongHub_Config.WalkSpeedActive = false
+_G.PhongHub_Config.JumpPowerActive = false
 PhongHub:Destroy()
 end)
 UserInputService.InputBegan:Connect(function(input, processed)
 if not processed and input.KeyCode == Enum.KeyCode.Insert then
-isVisible = not isVisible
-MainFrame.Visible = isVisible
+visibleState = not visibleState
+MainFrame.Visible = visibleState
 end
 end)
-print("[PhongHub] Multi-Tab Production Version 5.0 successfully parsed.")
+print("[PhongHub] Version 7.0 Master Build loaded cleanly.")
