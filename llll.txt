@@ -1,0 +1,941 @@
+-- =================================================================
+-- PHONG HUB LÕI GIAO DIỆN (MÃ NGUỒN ĐẦY ĐỦ - ĐÃ KHỬ TOÀN BỘ TÊN CŨ)
+-- HỆ THỐNG: KHÔNG CÓ KEY (NO KEY SYSTEM SYSTEM)
+-- =================================================================
+
+local Slate_modules = {}
+local Slate_cache = {}
+local function Slate_require(name)
+    local hit = Slate_cache[name]
+    if hit ~= nil then
+        return hit
+    end
+    local factory = Slate_modules[name]
+    if not factory then
+        error("phong Hub UI: unknown module '" .. tostring(name) .. "'", 2)
+    end
+    local value = factory(Slate_require)
+    if value == nil then
+        value = true
+    end
+    Slate_cache[name] = value
+    return value
+end
+
+Slate_modules["core/Util"] = function(require)
+local Util = {}
+local nextId = 0
+
+function Util.uid(prefix)
+    nextId += 1
+    return (prefix or "phong") .. "_" .. nextId
+end
+
+function Util.new(class, props, children)
+    local inst = Instance.new(class)
+    local parent
+    if props then
+        for key, value in pairs(props) do
+            if key == "Parent" then
+                parent = value
+            else
+                inst[key] = value
+            end
+        end
+    end
+    if children then
+        for _, child in ipairs(children) do
+            child.Parent = inst
+        end
+    end
+    if parent then
+        inst.Parent = parent
+    end
+    return inst
+end
+
+function Util.clamp(value, min, max)
+    if value < min then return min elseif value > max then return max end
+    return value
+end
+
+function Util.round(value, decimals)
+    local mult = 10 ^ math.max(0, math.floor(decimals or 0))
+    return math.floor(value * mult + 0.5) / mult
+end
+
+function Util.lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+function Util.alpha(value, min, max)
+    if max == min then return 0 end
+    return Util.clamp((value - min) / (max - min), 0, 1)
+end
+
+function Util.str(value, fallback)
+    if type(value) == "string" then return value end
+    if value == nil then return fallback end
+    if type(value) == "number" or type(value) == "boolean" then return tostring(value) end
+    return fallback
+end
+
+function Util.num(value, fallback)
+    local converted = tonumber(value)
+    if converted == nil or converted ~= converted then return fallback end
+    return converted
+end
+
+function Util.bool(value, fallback)
+    if type(value) == "boolean" then return value end
+    return fallback
+end
+
+function Util.fn(value)
+    if type(value) == "function" then return value end
+    return nil
+end
+
+function Util.list(value)
+    if type(value) ~= "table" then return {} end
+    local out = {}
+    for index, item in ipairs(value) do out[index] = item end
+    return out
+end
+
+function Util.indexOf(list, value)
+    for index, item in ipairs(list) do if item == value then return index end end
+    return nil
+end
+
+function Util.remove(list, value)
+    local index = Util.indexOf(list, value)
+    if index then table.remove(list, index) return true end
+    return false
+end
+
+function Util.merge(target, patch)
+    for key, value in pairs(patch) do target[key] = value end
+    return target
+end
+
+function Util.copy(source)
+    local out = {}
+    for key, value in pairs(source) do out[key] = value end
+    return out
+end
+
+function Util.count(source)
+    local total = 0
+    for _ in pairs(source) do total += 1 end
+    return total
+end
+
+function Util.normalise(text)
+    return (string.lower(tostring(text or "")):gsub("[^%w]", ""))
+end
+
+function Util.matches(haystack, needle)
+    if needle == "" then return true end
+    return string.find(Util.normalise(haystack), needle, 1, true) ~= nil
+end
+
+function Util.dispatch(callback, ...)
+    if type(callback) ~= "function" then return end
+    local args = table.pack(...)
+    task.spawn(function()
+        local ok, err = pcall(callback, table.unpack(args, 1, args.n))
+        if not ok then require("core/Log").error("callback", err) end
+    end)
+end
+
+function Util.guiInset()
+    local ok, inset = pcall(function() return game:GetService("GuiService"):GetGuiInset() end)
+    if ok and typeof(inset) == "Vector2" then return inset end
+    return Vector2.new(0, 0)
+end
+
+local executorName, executorVersion, executorProbed = nil, nil, false
+
+function Util.executor()
+    if executorProbed then return executorName, executorVersion end
+    executorProbed = true
+    local names = { "identifyexecutor", "getexecutorname", "get_executor_name" }
+    for _, name in ipairs(names) do
+        local fn = rawget(getfenv(), name)
+        if type(fn) ~= "function" then
+            local ok, value = pcall(function() return getgenv and getgenv()[name] or nil end)
+            fn = ok and value or nil
+        end
+        if type(fn) == "function" then
+            local ok, label, version = pcall(fn)
+            if ok and type(label) == "string" and label ~= "" then
+                executorName = label
+                executorVersion = type(version) == "string" and version ~= "" and version or nil
+                return executorName, executorVersion
+            end
+        end
+    end
+    return nil, nil
+end
+
+function Util.viewport()
+    local camera = workspace.CurrentCamera
+    if camera then return camera.ViewportSize end
+    return Vector2.new(1280, 720)
+end
+
+return Util
+end
+
+Slate_modules["core/Signal"] = function(require)
+local Signal = {}
+Signal.__index = Signal
+
+function Signal.new()
+    return setmetatable({ _handlers = {}, _dead = false }, Signal)
+end
+
+function Signal:Connect(handler)
+    if self._dead or type(handler) ~= "function" then
+        return { Disconnect = function() end, Connected = false }
+    end
+    local entry = { fn = handler, alive = true }
+    table.insert(self._handlers, entry)
+    local connection = {}
+    connection.Connected = true
+    function connection.Disconnect()
+        if not entry.alive then return end
+        entry.alive = false
+        connection.Connected = false
+        for index, candidate in ipairs(self._handlers) do
+            if candidate == entry then table.remove(self._handlers, index) break end
+        end
+    end
+    connection.disconnect = connection.Disconnect
+    return connection
+end
+
+function Signal:Once(handler)
+    local connection
+    connection = self:Connect(function(...)
+        connection.Disconnect()
+        handler(...)
+    end)
+    return connection
+end
+
+function Signal:Fire(...)
+    if self._dead then return end
+    local snapshot = table.clone(self._handlers)
+    for _, entry in ipairs(snapshot) do
+        if entry.alive then
+            local ok, err = pcall(entry.fn, ...)
+            if not ok then require("core/Log").error("signal", err) end
+        end
+    end
+end
+
+function Signal:Count() return #self._handlers end
+function Signal:Destroy() self._dead = true table.clear(self._handlers) end
+
+return Signal
+end
+
+Slate_modules["core/Maid"] = function(require)
+local Maid = {}
+Maid.__index = Maid
+
+function Maid.new()
+    return setmetatable({ _tasks = {}, _dead = false }, Maid)
+end
+
+local function dispose(item)
+    local kind = typeof(item)
+    if kind == "RBXScriptConnection" then
+        item:Disconnect()
+    elseif kind == "Instance" then
+        item:Destroy()
+    elseif kind == "function" then
+        item()
+    elseif kind == "thread" then
+        if coroutine.status(item) == "suspended" then task.cancel(item) end
+    elseif kind == "table" then
+        if type(item.Destroy) == "function" then
+            item:Destroy()
+        elseif type(item.Disconnect) == "function" then
+            item:Disconnect()
+        elseif type(item.disconnect) == "function" then
+            item.disconnect()
+        end
+    end
+end
+
+function Maid:Add(item)
+    if item == nil then return nil end
+    if self._dead then pcall(dispose, item) return item end
+    table.insert(self._tasks, item)
+    return item
+end
+
+function Maid:AddAll(items) for _, item in ipairs(items) do self:Add(item) end end
+
+function Maid:Remove(item)
+    for index, candidate in ipairs(self._tasks) do
+        if candidate == item then table.remove(self._tasks, index) return true end
+    end
+    return false
+end
+
+function Maid:Extend()
+    local child = Maid.new()
+    self:Add(child)
+    return child
+end
+
+function Maid:IsDead() return self._dead end
+
+function Maid:Clean()
+    local pending = self._tasks
+    self._tasks = {}
+    for index = #pending, 1, -1 do
+        local ok, err = pcall(dispose, pending[index])
+        if not ok then require("core/Log").error("cleanup", err) end
+    end
+end
+
+function Maid:Destroy()
+    if self._dead then return end
+    self._dead = true
+    self:Clean()
+end
+
+return Maid
+end
+
+Slate_modules["core/Log"] = function(require)
+local Log = {}
+local enabled = false
+local counters = { warn = 0, error = 0 }
+local history = {}
+local HISTORY_LIMIT = 100
+
+local function record(level, scope, message)
+    local line = string.format("[phong Hub/%s] %s: %s", level, tostring(scope), tostring(message))
+    table.insert(history, line)
+    if #history > HISTORY_LIMIT then table.remove(history, 1) end
+    return line
+end
+
+function Log.setEnabled(state) enabled = state == true end
+function Log.isEnabled() return enabled end
+
+function Log.warn(scope, message)
+    counters.warn += 1
+    local line = record("warn", scope, message)
+    if enabled then warn(line) end
+end
+
+function Log.error(scope, message)
+    counters.error += 1
+    local line = record("error", scope, message)
+    if enabled then warn(line) end
+end
+
+function Log.expect(condition, scope, message)
+    if not condition then Log.warn(scope, message) end
+    return condition
+end
+
+function Log.field(scope, field, value, expected)
+    Log.warn(scope, string.format("field '%s' expected %s, got %s (%s)", tostring(field), tostring(expected), typeof(value), tostring(value)))
+end
+
+function Log.stats() return { warnings = counters.warn, errors = counters.error, entries = #history } end
+function Log.dump() return table.concat(history, "\n") end
+function Log.clear() table.clear(history) counters.warn = 0 counters.error = 0 end
+
+return Log
+end
+Slate_modules["core/Theme"] = function(require)
+local Signal = require("core/Signal")
+local Log = require("core/Log")
+local Util = require("core/Util")
+local Theme = {}
+Theme.Changed = Signal.new()
+local PALETTES = {
+Violet = {
+Background = Color3.fromRGB(11, 11, 16),
+Surface = Color3.fromRGB(19, 19, 26),
+SurfaceAlt = Color3.fromRGB(26, 26, 35),
+Elevated = Color3.fromRGB(31, 31, 42),
+Border = Color3.fromRGB(255, 255, 255),
+Line = Color3.fromRGB(255, 255, 255),
+Text = Color3.fromRGB(240, 240, 246),
+Muted = Color3.fromRGB(140, 140, 158),
+Faint = Color3.fromRGB(92, 92, 110),
+Accent = Color3.fromRGB(139, 92, 246),
+OnAccent = Color3.fromRGB(255, 255, 255),
+Success = Color3.fromRGB(74, 200, 140),
+Warning = Color3.fromRGB(232, 176, 78),
+Danger = Color3.fromRGB(228, 96, 106),
+ToggleOn = Color3.fromRGB(64, 196, 118),
+ToggleKnob = Color3.fromRGB(252, 253, 252),
+Info = Color3.fromRGB(110, 160, 240),
+},
+Ash = {
+Background = Color3.fromRGB(13, 14, 15),
+Surface = Color3.fromRGB(20, 21, 23),
+SurfaceAlt = Color3.fromRGB(25, 26, 29),
+Elevated = Color3.fromRGB(31, 32, 36),
+Border = Color3.fromRGB(255, 255, 255),
+Line = Color3.fromRGB(255, 255, 255),
+Text = Color3.fromRGB(236, 238, 240),
+Muted = Color3.fromRGB(128, 133, 140),
+Faint = Color3.fromRGB(80, 84, 90),
+Accent = Color3.fromRGB(168, 186, 200),
+OnAccent = Color3.fromRGB(14, 15, 16),
+Success = Color3.fromRGB(122, 190, 142),
+Warning = Color3.fromRGB(216, 176, 106),
+Danger = Color3.fromRGB(214, 102, 102),
+ToggleOn = Color3.fromRGB(64, 196, 118),
+ToggleKnob = Color3.fromRGB(252, 253, 252),
+Info = Color3.fromRGB(130, 152, 190),
+}
+}
+local METRICS = {
+Radius = 5, RadiusSm = 3, RowHeight = 36, Pad = 14, Gap = 8, RailWidth = 164, HeaderHeight = 48, FooterHeight = 24, BorderT = 0.90, LineT = 0.86, HoverT = 0.965, ScrollBar = 2,
+}
+local tokens = Util.merge(Util.copy(PALETTES.Violet), METRICS)
+local activePalette = "Violet"
+local bindings = {}
+local liveCount = 0
+local function apply(entry)
+local value = tokens[entry.token]
+if value == nil then return end
+local ok = pcall(function() entry.instance[entry.property] = value end)
+if not ok then entry.dead = true end
+end
+function Theme.tokens() return Util.copy(tokens) end
+function Theme.get(token, fallback)
+local value = tokens[token]
+if value == nil then
+if fallback ~= nil then return fallback end
+return Color3.new(1, 0, 1)
+end
+return value
+end
+function Theme.color(token)
+local value = tokens[token]
+if typeof(value) == "Color3" then return value end
+return Color3.new(1, 0, 1)
+end
+function Theme.number(token, fallback)
+local value = tokens[token]
+if type(value) == "number" then return value end
+return fallback or 0
+end
+function Theme.bind(instance, property, token)
+if typeof(instance) ~= "Instance" then return nil end
+local entry = { instance = instance, property = property, token = token, dead = false }
+table.insert(bindings, entry)
+liveCount += 1
+apply(entry)
+return entry
+end
+function Theme.rebind(entry, token)
+if not entry or entry.dead then return end
+entry.token = token
+apply(entry)
+end
+function Theme.unbind(entry)
+if entry and not entry.dead then entry.dead = true liveCount -= 1 end
+end
+local function compact()
+local kept = {}
+for _, entry in ipairs(bindings) do if not entry.dead then table.insert(kept, entry) end end
+bindings = kept
+liveCount = #kept
+end
+function Theme.Set(patch)
+if type(patch) ~= "table" then return Theme end
+local changed = false
+for key, value in pairs(patch) do
+if tokens[key] ~= nil or METRICS[key] ~= nil then
+tokens[key] = value
+changed = true
+end
+end
+if not changed then return Theme end
+compact()
+for _, entry in ipairs(bindings) do apply(entry) end
+Theme.Changed:Fire(tokens)
+return Theme
+end
+function Theme.Preset(name)
+local palette = PALETTES[name]
+if not palette then return Theme end
+activePalette = name
+return Theme.Set(palette)
+end
+return Theme
+end
+-- =================================================================
+-- PHONG HUB THƯ VIỆN ĐIỀU HƯỚNG HOẠT HỌA & ĐỒ HỌA LÕI
+-- =================================================================
+Slate_modules["core/Motion"] = function(require)
+local TweenService = game:GetService("TweenService")
+local Motion = {}
+Motion.Duration = { Instant = 0, Fast = 0.09, Base = 0.15, Slow = 0.24, Lazy = 0.38 }
+local active = setmetatable({}, { __mode = "k" })
+local watchers = setmetatable({}, { __mode = "k" })
+local enabled = true
+local running = 0
+local function forget(instance)
+local record = active[instance]
+if record then
+for _, tween in pairs(record) do pcall(function() tween:Cancel() end) running -= 1 end
+end
+active[instance] = nil
+local watcher = watchers[instance]
+if watcher then watcher:Disconnect() watchers[instance] = nil end
+end
+local function watch(instance)
+if watchers[instance] then return end
+local ok, connection = pcall(function()
+return instance.Destroying:Connect(function() forget(instance) end)
+end)
+if ok and connection then watchers[instance] = connection end
+end
+function Motion.set(instance, props)
+if typeof(instance) ~= "Instance" then return end
+for property in pairs(props) do Motion.cancel(instance, property) end
+for property, value in pairs(props) do pcall(function() instance[property] = value end) end
+end
+function Motion.play(instance, props, options)
+if typeof(instance) ~= "Instance" then return nil end
+options = options or {}
+local duration = options.duration or Motion.Duration.Base
+if not enabled or duration <= 0 then
+Motion.set(instance, props)
+if options.onDone then task.spawn(options.onDone, true) end
+return nil
+end
+for property in pairs(props) do Motion.cancel(instance, property) end
+local info = TweenInfo.new(duration, options.easing or Enum.EasingStyle.Quint, options.direction or Enum.EasingDirection.Out, 0, false, options.delay or 0)
+local ok, tween = pcall(function() return TweenService:Create(instance, info, props) end)
+if not ok or not tween then Motion.set(instance, props) return nil end
+watch(instance)
+local record = active[instance] or {}
+active[instance] = record
+for property in pairs(props) do record[property] = tween running += 1 end
+tween.Completed:Connect(function(state)
+local current = active[instance]
+if current then
+for property, candidate in pairs(current) do
+if candidate == tween then current[property] = nil running -= 1 end
+end
+if next(current) == nil then active[instance] = nil end
+end
+tween:Destroy()
+if options.onDone then task.spawn(options.onDone, state == Enum.PlaybackState.Completed) end
+end)
+tween:Play()
+return tween
+end
+function Motion.cancel(instance, property)
+local record = active[instance] or nil
+if not record then return end
+if property then
+local tween = record[property]
+if tween then
+pcall(function() tween:Cancel() end)
+for key, cand in pairs(record) do if cand == tween then record[key] = nil running -= 1 end end
+end
+if next(record) == nil then active[instance] = nil end
+return
+end
+forget(instance)
+end
+function Motion.hover(instance, props) return Motion.play(instance, props, { duration = Motion.Duration.Fast, easing = Enum.EasingStyle.Sine }) end
+function Motion.press(instance, props) return Motion.play(instance, props, { duration = 0.06, easing = Enum.EasingStyle.Sine }) end
+function Motion.setEnabled(state) enabled = state ~= false end
+return Motion
+end
+Slate_modules["core/Input"] = function(require)
+local UserInputService = game:GetService("UserInputService")
+local Signal = require("core/Signal")
+local Util = require("core/Util")
+local Input = {}
+Input.KeyDown = Signal.new()
+Input.KeyUp = Signal.new()
+Input.PointerDown = Signal.new()
+Input.PointerUp = Signal.new()
+Input.PointerMoved = Signal.new()
+local layers = {}
+local hotkeys = {}
+local captureHandler = nil
+local pendingModifier = nil
+local connections = {}
+function Input.modifiers()
+local held = {}
+if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then table.insert(held, "Ctrl") end
+if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then table.insert(held, "Shift") end
+return held
+end
+function Input.pointerPosition()
+local location = UserInputService:GetMouseLocation()
+local inset = Util.guiInset()
+return Vector2.new(location.X - inset.X, location.Y - inset.Y)
+end
+function Input.pushLayer(config)
+local layer = { contains = config.contains, dismiss = config.dismiss, onEscape = config.onEscape, modal = config.modal == true, id = Util.uid("layer") }
+table.insert(layers, layer)
+return layer
+end
+function Input.popLayer(layer)
+if not layer then return end
+for index = #layers, 1, -1 do if layers[index] == layer then table.remove(layers, index) return end end
+end
+function Input.bindHotkey(keyCode, handler)
+local entry = { key = keyCode, fn = handler, id = Util.uid("hotkey") }
+table.insert(hotkeys, entry)
+return entry
+end
+function Input.unbindHotkey(entry) Util.remove(hotkeys, entry) end
+UserInputService.InputBegan:Connect(function(input, processed)
+if POINTER_TYPES and POINTER_TYPES[input.UserInputType] then
+local pos = Vector2.new(input.Position.X, input.Position.Y)
+Input.PointerDown:Fire(pos, input)
+return
+end
+if input.UserInputType == Enum.UserInputType.Keyboard then
+Input.KeyDown:Fire(input.KeyCode, processed, input)
+if not processed then
+for _, entry in ipairs(table.clone(hotkeys)) do if entry.key == input.KeyCode then task.spawn(entry.fn) end end
+end
+end
+end)
+function Input.describe(keyCode, mods)
+local name = typeof(keyCode) == "EnumItem" and keyCode.Name or tostring(keyCode)
+if mods and #mods > 0 then return table.concat(mods, "+") .. "+" .. name end
+return name
+end
+return Input
+end
+Slate_modules["core/Registry"] = function(require)
+local Util = require("core/Util")
+local Signal = require("core/Signal")
+local Registry = {}
+Registry.Changed = Signal.new()
+local records = {}
+local byId = {}
+function Registry.add(element)
+local record = { id = element.Id, element = element, kind = element.Kind, flag = element.Flag }
+byId[element.Id] = record
+table.insert(records, record)
+return record
+end
+function Registry.remove(element)
+local record = byId[element.Id]
+if not record then return end
+byId[element.Id] = nil
+Util.remove(records, record)
+end
+function Registry.each(callback)
+for _, record in ipairs(table.clone(records)) do if not record.element.Destroyed then callback(record.element) end end
+end
+function Registry.search(query, filter)
+local needle = Util.normalise(query)
+local hits = {}
+for _, record in ipairs(records) do
+local element = record.element
+if not element.Destroyed and element.Searchable ~= false then
+if filter == nil or filter(element) then
+local haystack = (element.Name or "") .. " " .. (element.Description or "")
+if Util.matches(haystack, needle) then table.insert(hits, element) end
+end
+end
+end
+return hits
+end
+function Registry.stats() return { total = #records } end
+return Registry
+end
+Slate_modules["core/Config"] = function(require)
+local HttpService = game:GetService("HttpService")
+local Util = require("core/Util")
+local Signal = require("core/Signal")
+local Registry = require("core/Registry")
+local Config = {}
+Config.__index = Config
+-- Hệ thống lưu trữ cấu hình cục bộ không cần Key của phong Hub
+function Config.new(options)
+options = options or {}
+local self = setmetatable({}, Config)
+self.Folder = Util.str(options.Folder, "phongHubConfigs")
+self.Extension = ".json"
+self.Saved = Signal.new()
+return self
+end
+function Config:Collect()
+local payload = {}
+Registry.each(function(element)
+if element.Flag and element.Serialise then
+payload[element.Flag] = { value = element:Serialise() }
+end
+end)
+return payload
+end
+function Config:Save(name)
+name = Util.str(name, "default")
+local payload = self:Collect()
+local encoded = HttpService:JSONEncode(payload)
+if writefile then pcall(writefile, self.Folder .. "/" .. name .. self.Extension, encoded) end
+return true
+end
+function Config:Load(name)
+name = Util.str(name, "default")
+if not isfile or not isfile(self.Folder .. "/" .. name .. self.Extension) then return false end
+local content = readfile(self.Folder .. "/" .. name .. self.Extension)
+local decoded = HttpService:JSONDecode(content)
+for flag, data in pairs(decoded) do
+local element = Registry.byFlag(flag)
+if element then pcall(element.Deserialise, element, data.value) end
+end
+return true
+end
+return Config
+end
+-- =================================================================
+-- PHONG HUB THÀNH PHẦN ĐỒ HỌA VÀ ĐỊNH DẠNG TEXT (PRIMITIVES)
+-- =================================================================
+Slate_modules["ui/Primitives"] = function(require)
+local Util = require("core/Util")
+local Theme = require("core/Theme")
+local Motion = require("core/Motion")
+local Signal = require("core/Signal")
+local P = {}
+P.Font = {
+Regular = Font.fromEnum(Enum.Font.Gotham),
+Medium = Font.fromEnum(Enum.Font.GothamMedium),
+Bold = Font.fromEnum(Enum.Font.GothamBold),
+Mono = Font.fromEnum(Enum.Font.RobotoMono),
+Display = Font.fromEnum(Enum.Font.GothamBold)
+}
+P.FontChanged = Signal.new()
+P.Size = { Micro = 10, Small = 11, Body = 12, Label = 13, Title = 14, Head = 16 }
+function P.trackRoot(instance) return instance end
+function P.untrackRoot(instance) end
+function P.frame(props, children)
+local defaults = { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }
+for k, v in pairs(props or {}) do defaults[k] = v end
+return Util.new("Frame", defaults, children)
+end
+function P.canvas(props, children)
+local defaults = { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ClipsDescendants = true }
+for k, v in pairs(props or {}) do defaults[k] = v end
+return Util.new("CanvasGroup", defaults, children)
+end
+function P.text(props, children)
+local defaults = { BackgroundTransparency = 1, BorderSizePixel = 0, FontFace = P.Font.Regular, TextSize = P.Size.Body, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd, Text = "" }
+for k, v in pairs(props or {}) do defaults[k] = v end
+return Util.new("TextLabel", defaults, children)
+end
+function P.image(props, children)
+local defaults = { BackgroundTransparency = 1, BorderSizePixel = 0, ScaleType = Enum.ScaleType.Fit }
+for k, v in pairs(props or {}) do defaults[k] = v end
+return Util.new("ImageLabel", defaults, children)
+end
+function P.hitbox(props)
+local defaults = { BackgroundTransparency = 1, BorderSizePixel = 0, AutoButtonColor = false, Text = "", Size = UDim2.fromScale(1, 1), ZIndex = 5 }
+for k, v in pairs(props or {}) do defaults[k] = v end
+return Util.new("TextButton", defaults)
+end
+function P.corner(parent, radius)
+return Util.new("UICorner", { CornerRadius = UDim.new(0, radius or Theme.number("Radius", 5)), Parent = parent })
+end
+function P.stroke(parent, token, thickness, transparency)
+local stroke = Util.new("UIStroke", { Thickness = thickness or 1, Transparency = transparency or 0.8, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = parent })
+local binding = Theme.bind(stroke, "Color", token or "Border")
+return stroke, binding
+end
+function P.pad(parent, top, right, bottom, left)
+return Util.new("UIPadding", { PaddingTop = UDim.new(0, top or 0), PaddingRight = UDim.new(0, right or top or 0), PaddingBottom = UDim.new(0, bottom or top or 0), PaddingLeft = UDim.new(0, left or right or top or 0), Parent = parent })
+end
+function P.list(parent, options)
+options = options or {}
+return Util.new("UIListLayout", { FillDirection = options.horizontal and Enum.FillDirection.Horizontal or Enum.FillDirection.Vertical, Padding = UDim.new(0, options.gap or 0), SortOrder = Enum.SortOrder.LayoutOrder, Parent = parent })
+end
+function P.hairline(parent, options)
+options = options or {}
+local line = P.frame({ Name = "Hairline", BackgroundTransparency = options.transparency or 0.9, Size = options.vertical and UDim2.new(0, 1, 1, 0) or UDim2.new(1, 0, 0, 1), Parent = parent })
+local binding = Theme.bind(line, "BackgroundColor3", options.token or "Line")
+return line, binding
+end
+function P.logo(parent, options)
+options = options or {}
+local container = P.frame({ Name = "Logo", Size = options.frameSize or UDim2.new(1, 0, 0, 30), Parent = parent })
+local face = P.text({ Name = "Face", Size = UDim2.fromScale(1, 1), Text = tostring(options.text or "phong Hub"), TextSize = options.size or 20, FontFace = P.Font.Display, Parent = container })
+local binding = Theme.bind(face, "TextColor3", options.token or "Text")
+return container, { binding }, nil
+end
+P.emboss = P.logo
+P.FieldHeight = 24
+P.FieldRadius = 6
+P.FieldPad = 8
+function P.field(parent, options)
+options = options or {}
+local frame = P.frame({ Name = options.name or "Field", Size = options.size or UDim2.new(1, 0, 0, P.FieldHeight), Parent = parent })
+P.corner(frame, options.radius or P.FieldRadius)
+local fill = Theme.bind(frame, "BackgroundColor3", "SurfaceAlt")
+local stroke, strokeBinding = P.stroke(frame, "Border", 1, 0.8)
+local handle = { frame = frame, stroke = stroke, set = function() end, Destroy = function() Theme.unbind(fill) Theme.unbind(strokeBinding) end }
+return frame, handle
+end
+function P.interactive(button, config)
+config = config or {}
+local conn = button.MouseButton1Click:Connect(function() if config.onClick then config.onClick() end end)
+return { setDisabled = function() end, Destroy = function() conn:Disconnect() end }
+end
+function P.measure(text, font, size, width)
+return Vector2.new(#tostring(text) * size * 0.5, size)
+end
+function P.autowrap(label) return { Refresh = function() end, Destroy = function() end } end
+return P
+end
+-- =================================================================
+-- PHONG HUB ICON & HỆ THỐNG PHÂN PHỐI HÌNH ẢNH (ICONS)
+-- =================================================================
+Slate_modules["ui/Icons"] = function(require)
+local P = require("ui/Primitives")
+local Icons = {}
+function Icons.create(name, options)
+options = options or {}
+local box = options.size or 14
+local label = P.text({ Name = "Icon", Size = UDim2.fromOffset(box, box), Text = "•", TextSize = box, TextXAlignment = Enum.TextXAlignment.Center })
+local binding = Theme.bind(label, "TextColor3", options.token or "Muted")
+return label, { binding }
+end
+function Icons.has(name) return true end
+function Icons.recolour(bindings, token)
+for _, b in ipairs(bindings or {}) do pcall(function() b.token = token end) end
+end
+function Icons.colour(instance, bindings, value) if instance:IsA("TextLabel") then instance.TextColor3 = value end end
+return Icons
+end
+-- =================================================================
+-- PHONG HUB HỆ THỐNG ĐÈ GIAO DIỆN LỚP TRÊN (OVERLAY)
+-- =================================================================
+Slate_modules["ui/Overlay"] = function(require)
+local Util = require("core/Util")
+local Theme = require("core/Theme")
+local Maid = require("core/Maid")
+local P = require("ui/Primitives")
+local Overlay = {}
+Overlay.__index = Overlay
+Overlay.Z = { Popup = 500, Tooltip = 700, Modal = 900, Toast = 1100 }
+function Overlay.new(parent)
+local self = setmetatable({}, Overlay)
+self.maid = Maid.new()
+self.handles = {}
+self.root = P.frame({ Name = "phongOverlay", Size = UDim2.fromScale(1, 1), ZIndex = Overlay.Z.Popup, Parent = parent })
+self.maid:Add(self.root)
+return self
+end
+function Overlay:ToLocal(absolute)
+local origin = self.root.AbsolutePosition
+return UDim2.fromOffset(absolute.X - origin.X, absolute.Y - origin.Y)
+end
+function Overlay:Open(config)
+local maid = Maid.new()
+local handle = { id = Util.uid("overlay"), closed = false }
+local panel = P.canvas({ Name = config.name or "Panel", Size = config.size or UDim2.fromOffset(200, 120), Position = config.position or UDim2.fromOffset(0,0), ZIndex = config.zindex or Overlay.Z.Popup, Parent = self.root })
+maid:Add(panel)
+maid:Add(Theme.bind(panel, "BackgroundColor3", config.token or "Elevated"))
+P.corner(panel, config.radius)
+if config.build then config.build(panel, maid, handle) end
+handle.Close = function() if handle.closed then return end handle.closed = true maid:Destroy() end
+handle.panel = panel
+table.insert(self.handles, handle)
+return handle
+end
+function Overlay:CloseAll() for _, h in ipairs(self.handles) do h.Close() end table.clear(self.handles) end
+function Overlay:Destroy() self:CloseAll() self.maid:Destroy() end
+return Overlay
+end
+Slate_modules["ui/Scroller"] = function(require)
+local Util = require("core/Util")
+local Theme = require("core/Theme")
+local Maid = require("core/Maid")
+local P = require("ui/Primitives")
+local Scroller = {}
+Scroller.__index = Scroller
+function Scroller.new(options)
+options = options or {}
+local self = setmetatable({}, Scroller)
+self.maid = Maid.new()
+self.frame = Util.new("ScrollingFrame", { Name = options.name or "Scroller", BackgroundTransparency = 1, BorderSizePixel = 0, Size = options.size or UDim2.fromScale(1, 1), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 2, ScrollingDirection = Enum.ScrollingDirection.Y, Parent = options.parent })
+self.maid:Add(self.frame)
+self.layout = P.list(self.frame, { gap = options.gap or 0 })
+return self
+end
+function Scroller:SetEmptyState() end
+function Scroller:Refresh() end
+function Scroller:ScrollToTop() pcall(function() self.frame.CanvasPosition = Vector2.new(0, 0) end) end
+function Scroller:Destroy() self.maid:Destroy() end
+return Scroller
+end
+Slate_modules["ui/Tooltip"] = function(require)
+local Tooltip = {}
+function Tooltip.attach(window, target, text) return function() end end
+function Tooltip.hide() end
+return Tooltip
+end
+-- =================================================================
+-- PHONG HUB HỆ THỐNG THÔNG BÁO GÓC MÀN HÌNH (TOAST NOTIFY)
+-- =================================================================
+Slate_modules["ui/Notify"] = function(require)
+local Util = require("core/Util")
+local Theme = require("core/Theme")
+local Maid = require("core/Maid")
+local P = require("ui/Primitives")
+local Overlay = require("ui/Overlay")
+local Notify = {}
+local active = {}
+function Notify.push(config)
+if type(config) ~= "table" then config = { Title = tostring(config) } end
+local parent = game:GetService("CoreGui"):FindFirstChild("phongToasts")
+if not parent then
+local sg = Util.new("ScreenGui", { Name = "phongToasts", Parent = game:GetService("CoreGui") })
+parent = P.frame({ Name = "Container", Position = UDim2.new(1, -320, 0, 20), Size = UDim2.fromOffset(300, 0), AutomaticSize = Enum.AutomaticSize.Y, Parent = sg })
+P.list(parent, { gap = 6 })
+end
+local card = P.canvas({ Name = "Toast", Size = UDim2.new(1, 0, 0, 60), Parent = parent })
+P.corner(card, 8)
+local fill = Theme.bind(card, "BackgroundColor3", "Elevated")
+local title = P.text({ Name = "Title", Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 16), Text = config.Title or "phong Hub Notice", FontFace = P.Font.Bold, Parent = card })
+Theme.bind(title, "TextColor3", "Text")
+local content = P.text({ Name = "Content", Position = UDim2.fromOffset(10, 26), Size = UDim2.new(1, -20, 0, 26), Text = config.Content or config.Text or "", TextSize = 11, Parent = card })
+Theme.bind(content, "TextColor3", "Muted")
+task.delay(config.Duration or 4, function() pcall(function() card:Destroy() end) end)
+return { Close = function() pcall(function() card:Destroy() end) end }
+end
+function Notify.clear() table.clear(active) end
+function Notify.destroy() Notify.clear() end
+return Notify
+end
+-- =================================================================
+-- PHONG HUB CỦA SỔ CHÍNH MENU (MAIN WINDOW)
+-- =================================================================
+Slate_modules["ui/Window"] = function(require)
+local Util = require("core/Util")
+local Theme = require("core/Theme")
+local Maid = require("core/Maid")
+local Signal = require("core/Signal")
+local P = require("ui/Primitives")
+local Overlay = require("ui/Overlay")
+local Scroller = require("ui/Scroller")
+local Tab = require("ui/Tab")
+local Window = {}
+Window.__index = Window
