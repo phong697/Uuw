@@ -1,0 +1,298 @@
+--[[
+    ========================================================================
+    PHONGHUB RIDER - VERSION 10.1 (XXXTENTACION SPECIAL EDITION)
+    ========================================================================
+    Description: Customized UI theme inspired by XXXTENTACION's iconic 
+    half-blonde half-black hairstyle and dark aesthetic. Fully compatible 
+    with Delta Executor and the latest Racing Event update.
+    ========================================================================
+]]
+
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("PhongHub_SAE") then
+    game:FindFirstChild("PhongHub_SAE"):Destroy()
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local LocalPlayer = Players.LocalPlayer
+
+if not _G.PhongHub_Config then
+    _G.PhongHub_Config = {
+        AutoSteal = false,
+        AutoTreadmill = false,
+        AutoRaceEvent = false,
+        AutoUsePowerUps = false,
+        MovementSpeed = 45
+    }
+end
+
+-- ========================================================================
+-- ANTI-CHEAT BYPASS & ENVIRONMENT SPOOFER
+-- ========================================================================
+pcall(function()
+    local gmt = getrawmetatable(game)
+    local oldIndex = gmt.__index
+    setreadonly(gmt, false)
+    gmt.__index = newcclosure(function(self, key)
+        if self:IsA("Humanoid") and (key == "WalkSpeed" or key == "JumpPower") then
+            return key == "WalkSpeed" and 16 or 50
+        end
+        return oldIndex(self, key)
+    end)
+    setreadonly(gmt, true)
+end)
+
+-- ========================================================================
+-- XXXTENTACION INSPIRED GUI DESIGN (YELLOW & BLACK THEME)
+-- ========================================================================
+local PhongHub = Instance.new("ScreenGui")
+PhongHub.Name = "PhongHub_SAE"
+PhongHub.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 430, 0, 310)
+MainFrame.Position = UDim2.new(0.5, -215, 0.4, -155)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12) -- Ultra Dark Background
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = PhongHub
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+-- Neon Blonde Stroke Border
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 25 / 10 -- 2.5 thickness
+UIStroke.Color = Color3.fromRGB(235, 210, 110) -- Dreadlock Blonde Color
+UIStroke.Parent = MainFrame
+
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 45)
+Header.BackgroundColor3 = Color3.fromRGB(18, 18, 20) -- Matte Black Header
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
+
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 12)
+HeaderCorner.Parent = Header
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "PhongHub X Edition v10.1 | Steal An Egg"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -20, 1, -65)
+Content.Position = UDim2.new(0, 10, 0, 55)
+Content.BackgroundTransparency = 1
+Content.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 8)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = Content
+
+local function CreateButton(name, text, key)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, 0, 0, 42)
+    Button.BackgroundColor3 = Color3.fromRGB(22, 22, 26) -- Dark Gray-Black Base
+    Button.Text = text .. " : [ OFF ]"
+    Button.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Button.TextSize = 13
+    Button.Font = Enum.Font.GothamSemibold
+    Button.Parent = Content
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = Button
+
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Thickness = 1
+    btnStroke.Color = Color3.fromRGB(40, 40, 45)
+    btnStroke.Parent = Button
+
+    -- Dynamic Custom Theme Toggle Coloring
+    local function UpdateColor()
+        if _G.PhongHub_Config[key] then
+            Button.BackgroundColor3 = Color3.fromRGB(180, 155, 60) -- Dark Blonde Highlight
+            Button.TextColor3 = Color3.fromRGB(10, 10, 10) -- Jet Black Text for contrast
+            Button.Text = text .. " : [ ON ]"
+            btnStroke.Color = Color3.fromRGB(235, 210, 110)
+        else
+            Button.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+            Button.TextColor3 = Color3.fromRGB(180, 180, 180)
+            Button.Text = text .. " : [ OFF ]"
+            btnStroke.Color = Color3.fromRGB(40, 40, 45)
+        end
+    end
+
+    UpdateColor()
+
+    Button.MouseButton1Click:Connect(function()
+        _G.PhongHub_Config[key] = not _G.PhongHub_Config[key]
+        UpdateColor()
+    end)
+end
+
+-- Render Configured Buttons
+CreateButton("AutoStealBtn", "Auto Physical Steal Eggs", "AutoSteal")
+CreateButton("AutoTreadmillBtn", "Auto Physical Train (Speed)", "AutoTreadmill")
+CreateButton("AutoRaceBtn", "Auto Join & Farm Racing Event", "AutoRaceEvent")
+CreateButton("AutoPowerBtn", "Auto Use Race Power-Ups", "AutoUsePowerUps")
+
+-- ========================================================================
+-- RACING EVENT & FARMING PROCESSING LOGIC COROUTINES
+-- ========================================================================
+local function SafePhysicalMove(targetPivot)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root or not targetPivot then return end
+    
+    local pos = targetPivot.Position
+    local distance = (root.Position - pos).Magnitude
+    local duration = distance / _G.PhongHub_Config.MovementSpeed
+    
+    local info = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, info, {CFrame = CFrame.new(pos + Vector3.new(0, 2, 0))})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local function FireAllRemotes(name, ...)
+    for _, item in pairs(ReplicatedStorage:GetDescendants()) do
+        if item:IsA("RemoteEvent") and (item.Name:lower() == name:lower() or item.Name:lower():match(name:lower())) then
+            item:FireServer(...)
+        end
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.PhongHub_Config.AutoRaceEvent then
+            pcall(function()
+                local raceMap = workspace:FindFirstChild("RaceTrack") or workspace:FindFirstChild("RacingEvent") or workspace:FindFirstChild("Race")
+                
+                FireAllRemotes("JoinRace")
+                FireAllRemotes("StartRace")
+                FireAllRemotes("EnterRace")
+                
+                if raceMap then
+                    local finishLine = raceMap:FindFirstChild("Finish") or raceMap:FindFirstChild("FinishLine") or raceMap:FindFirstChild("End")
+                    if finishLine then
+                        SafePhysicalMove(finishLine:GetPivot())
+                        task.wait(0.5)
+                    else
+                        for _, child in pairs(raceMap:GetDescendants()) do
+                            if child.Name:lower():match("checkpoint") or child.Name:lower():match("part") then
+                                SafePhysicalMove(child:GetPivot())
+                                task.wait(0.2)
+                            end
+                        end
+                    end
+                end
+                
+                FireAllRemotes("ClaimRaceRewards")
+                FireAllRemotes("ClaimWinPass")
+                FireAllRemotes("CollectTrophy")
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if _G.PhongHub_Config.AutoUsePowerUps then
+            pcall(function()
+                FireAllRemotes("UsePowerUp", true)
+                FireAllRemotes("ActivateNitro")
+                FireAllRemotes("UseItem")
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.PhongHub_Config.AutoSteal then
+            pcall(function()
+                local base = workspace:FindFirstChild("PlayerBases") and workspace.PlayerBases:FindFirstChild(LocalPlayer.Name)
+                local drop = base and (base:FindFirstChild("DropZone") or base:FindFirstChild("EggPen"))
+                local folder = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("EggSpawns") or workspace
+                if drop and folder then
+                    for _, egg in pairs(folder:GetChildren()) do
+                        if not _G.PhongHub_Config.AutoSteal then break end
+                        if egg:IsA("Model") and egg.Name:lower():match("egg") and not egg.Name:lower():match("zone") then
+                            SafePhysicalMove(egg:GetPivot())
+                            task.wait(0.3)
+                            SafePhysicalMove(drop:GetPivot())
+                            task.wait(0.3)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        if _G.PhongHub_Config.AutoTreadmill then
+            pcall(function()
+                FireAllRemotes("Train", true)
+                FireAllRemotes("Click")
+                FireAllRemotes("GainSpeed")
+            end)
+        end
+    end
+end)
+
+-- Themed Floating Toggle HUD Button
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(235, 210, 110) -- Blonde Button Base
+ToggleButton.Text = "X"
+ToggleButton.TextColor3 = Color3.fromRGB(10, 10, 10) -- Black Icon Text
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 16
+ToggleButton.Parent = PhongHub
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 25)
+ToggleCorner.Parent = ToggleButton
+local menuVisible = true
+ToggleButton.MouseButton1Click:Connect(function()
+menuVisible = not menuVisible
+MainFrame.Visible = menuVisible
+end)
+local DestroyButton = Instance.new("TextButton")
+DestroyButton.Size = UDim2.new(0, 35, 0, 35)
+DestroyButton.Position = UDim2.new(1, -40, 0, 5)
+DestroyButton.BackgroundTransparency = 1
+DestroyButton.Text = "X"
+DestroyButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+DestroyButton.Font = Enum.Font.GothamBold
+DestroyButton.Parent = Header
+DestroyButton.MouseButton1Click:Connect(function()
+_G.PhongHub_Config.AutoSteal = false
+_G.PhongHub_Config.AutoTreadmill = false
+_G.PhongHub_Config.AutoRaceEvent = false
+_G.PhongHub_Config.AutoUsePowerUps = false
+PhongHub:Destroy()
+end)
+print("[PhongHub] X-Theme Edition Version 10.1 successfully loaded.")
