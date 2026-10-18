@@ -1,7 +1,8 @@
 -- phongdz - Ultimate Mobile Shared Hub (Kavo UI x PhongHub Elite)
 -- Target: Steal an Egg (Roblox Mobile - Delta & Madium Optimized)
--- Hosting Loader: loadstring(game:HttpGet("https://githubusercontent.com"))()
+-- Link nạp chuẩn: loadstring(game:HttpGet("https://githubusercontent.com"))()
 
+-- SỬA LỖI CHÍ MẠNG: Thay link gốc và đặt đúng tên biến hệ thống Library để kích hoạt menu
 local Library = loadstring(game:HttpGet("https://githubusercontent.com"))()
 local Window = Library.CreateLib("phongdz Hub - Mobile Elite", "BloodTheme")
 
@@ -203,7 +204,7 @@ UpgradeSection:NewToggle(currentText.toggle_sell, "Tự động dịch chuyển 
            while _G.AutoSell do
                local sellPart = workspace:FindFirstChild("SellArea") or workspace:FindFirstChild("Sell", true)
                if sellPart then
-                   local currentCFrame = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.CFrame
+local currentCFrame = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.CFrame
 SafeMoveTo(sellPart:IsA("Model") and sellPart:GetPivot() or sellPart.CFrame)
 task.wait(0.3)
 if currentCFrame then SafeMoveTo(currentCFrame) end
