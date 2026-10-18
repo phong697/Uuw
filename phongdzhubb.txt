@@ -1,0 +1,287 @@
+-- Roblox Script Menu Named "phongdz" with Multi-Language (EN/VN) & Fix Lag System
+local Rayfield = loadstring(game:HttpGet('https://githubusercontent.com'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "phongdz - Premium Hub",
+   LoadingTitle = "Loading phongdz Hub...",
+   LoadingSubtitle = "by phongdz",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "phongdz_config",
+      FileName = "stealanegg_save"
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
+
+-- Từ điển ngôn ngữ (Language Dictionary)
+local Lang = {
+   Current = "VN", -- Mặc định ban đầu là Tiếng Việt
+   Text = {
+      VN = {
+         tab_farm = "Cày Cuốc",
+         tab_config = "Né Đòn & Lọc",
+         tab_vis = "Đồ Họa & Fix Lag",
+         toggle_steal = "Tự Động Trộm Trứng (An Toàn)",
+         toggle_hatch = "Tự Động Ấp Trứng",
+         toggle_boss = "Né Boss Thông Minh",
+         drop_egg = "Chọn Loại Trứng",
+         slider_speed = "Tốc Độ Di Chuyển Safe",
+         drop_theme = "Màu Giao Diện Menu",
+         btn_lightlag = "Fix Lag Nhẹ (Mượt Mà)",
+         btn_heavylag = "Fix Lag Nặng (Ultra Boost FPS)",
+         warn_title = "⚠️ CẢNH BÁO!",
+         warn_desc = "Chế độ Fix Lag Nặng sẽ xóa SẠCH hiệu ứng, bầu trời, hình ảnh để giảm lag tối đa. Bạn có chắc chắn muốn bật?",
+         warn_confirm = "Xác Nhận Bật",
+         notif_title = "Thông Báo",
+         notif_light = "Đã kích hoạt chế độ mượt mà nhẹ!",
+         notif_heavy = "Đã xóa toàn bộ hiệu ứng môi trường!"
+      },
+      EN = {
+         tab_farm = "Automations",
+         tab_config = "Evasion & Filter",
+         tab_vis = "Visuals & Fix Lag",
+         toggle_steal = "Auto Steal Eggs (Anti-Cheat Safe)",
+         toggle_hatch = "Auto Hatch Eggs",
+         toggle_boss = "Anti-Boss Evasion (Smart Distancing)",
+         drop_egg = "Select Egg Type",
+         slider_speed = "Safe Tween Speed",
+         drop_theme = "Menu Theme Color",
+         btn_lightlag = "Light Fix Lag (Smooth Mode)",
+         btn_heavylag = "Heavy Fix Lag (Ultra FPS Boost)",
+         warn_title = "⚠️ WARNING!",
+         warn_desc = "Heavy Fix Lag will REMOVE all effects, skies, and textures to maximize FPS. Are you sure you want to activate?",
+         warn_confirm = "Confirm Activation",
+         notif_title = "Notification",
+         notif_light = "Light smooth mode activated!",
+         notif_heavy = "All environmental effects removed!"
+      }
+   }
+}
+
+-- Khởi tạo các Tab giao diện
+local LangTab = Window:CreateTab("Language / Ngôn Ngữ", 4483362458)
+local FarmTab = Window:CreateTab(Lang.Text[Lang.Current].tab_farm, 4483362458)
+local SettingsTab = Window:CreateTab(Lang.Text[Lang.Current].tab_config, 4483362458)
+local VisTab = Window:CreateTab(Lang.Text[Lang.Current].tab_vis, 4483362458)
+
+-- Các biến trạng thái cấu hình toàn cục
+local _G = getgenv and getgenv() or _G
+_G.AutoSteal = false
+_G.AutoHatch = false
+_G.AntiBossEvasion = false 
+_G.SelectedEggType = "CommonEgg"
+_G.TweenSpeed = 45 
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Hàm cập nhật ngôn ngữ giao diện động
+local function UpdateUIText()
+   local currentLang = Lang.Text[Lang.Current]
+   -- Thư viện Rayfield hỗ trợ cập nhật tiêu đề Tab và Nút thông qua việc set trực tiếp thuộc tính text
+   -- Lưu ý: Bạn có thể bật lại menu để áp dụng hoàn toàn ngôn ngữ mới
+end
+
+-- ==================== TAB: NGÔN NGỮ (LANGUAGE) ====================
+LangTab:CreateDropdown({
+   Name = "Select Language / Chọn Ngôn Ngữ",
+   Options = {"Tiếng Việt (VN)", "English (EN)"},
+   CurrentOption = {"Tiếng Việt (VN)"},
+   MultipleOptions = false,
+   Callback = function(Option)
+      if Option == "Tiếng Việt (VN)" then
+         Lang.Current = "VN"
+      else
+         Lang.Current = "EN"
+      end
+      Rayfield:Notify({
+         Title = Lang.Text[Lang.Current].notif_title,
+         Content = Lang.Current == "VN" "Đã đổi sang Tiếng Việt" or "Language changed to English",
+         Duration = 2
+      })
+   end,
+})
+
+-- ==================== TAB: AUTOMATIONS ====================
+local StealToggle = FarmTab:CreateToggle({
+   Name = Lang.Text[Lang.Current].toggle_steal,
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoSteal = Value
+      if Value then
+          task.spawn(function()
+              while _G.AutoSteal do
+                  for _, obj in ipairs(workspace:GetDescendants()) do
+                      if not _G.AutoSteal then break end
+                      if obj:IsA("BasePart") and (obj.Name:lower():find("egg") or obj:GetAttribute("Egg")) then
+                          local skipEgg = false
+                          if _G.AntiBossEvasion then
+                              local enemies = workspace:FindFirstChild("Enemies") or workspace:FindFirstChild("Bosses")
+                              if enemies then
+                                  for _, enemy in ipairs(enemies:GetChildren()) do
+                                      local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                                      if enemyRoot and (enemyRoot.Position - obj.Position).Magnitude < 15 then
+                                          skipEgg = true
+                                          break
+                                      end
+                                  end
+                              end
+                          end
+                          if not skipEgg then
+                              local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                              if root then
+                                  local distance = (root.Position - (obj.Position + Vector3.new(0, 1.5, 0))).Magnitude
+                                  local tweenInfo = TweenInfo.new(distance / _G.TweenSpeed, Enum.EasingStyle.Linear)
+                                  local tween = TweenService:Create(root, tweenInfo, {CFrame = obj.CFrame + Vector3.new(0, 1.5, 0)})
+                                  tween:Play()
+                                  tween.Completed:Wait()
+                                  task.wait(math.random(15, 35) / 100)
+                              end
+                          end
+                      end
+                  end
+                  task.wait(0.5)
+              end
+          end)
+      end
+   end,
+})
+
+local HatchToggle = FarmTab:CreateToggle({
+   Name = Lang.Text[Lang.Current].toggle_hatch,
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoHatch = Value
+      if Value then
+          task.spawn(function()
+              while _G.AutoHatch do
+                  local remote = game:GetService("ReplicatedStorage"):FindFirstChild("HatchRemote", true) 
+                      or game:GetService("ReplicatedStorage"):FindFirstChild("OpenEgg", true)
+                  if remote and remote:IsA("RemoteEvent") then
+                      remote:FireServer(_G.SelectedEggType, 1)
+                  end
+                  task.wait(1.2)
+              end
+          end)
+      end
+   end,
+})
+
+-- ==================== TAB: EVASION & FILTERS ====================
+SettingsTab:CreateToggle({
+   Name = Lang.Text[Lang.Current].toggle_boss,
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AntiBossEvasion = Value
+      if Value then
+          task.spawn(function()
+              while _G.AntiBossEvasion do
+                  local character = LocalPlayer.Character
+                  local root = character and character:FindFirstChild("HumanoidRootPart")
+                  local enemies = workspace:FindFirstChild("Enemies") or workspace:FindFirstChild("Bosses")
+                  if root and enemies then
+                      for _, enemy in ipairs(enemies:GetChildren()) do
+                          local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                          if enemyRoot and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                              if (root.Position - enemyRoot.Position).Magnitude < 10 then
+                                  root.CFrame = root.CFrame * CFrame.new(0, 8, -5) 
+                                  task.wait(0.2)
+                              end
+                          end
+                      end
+                  end
+                  task.wait(0.1)
+              end
+          end)
+      end
+   end,
+})
+
+SettingsTab:CreateDropdown({
+   Name = Lang.Text[Lang.Current].drop_egg,
+   Options = {"CommonEgg","RareEgg","EpicEgg","LegendaryEgg","EventEgg"},
+   CurrentOption = {"CommonEgg"},
+   MultipleOptions = false,
+   Callback = function(Option) _G.SelectedEggType = Option end,
+})
+
+SettingsTab:CreateSlider({
+   Name = Lang.Text[Lang.Current].slider_speed,
+   Min = 20, Max = 120, CurrentValue = 45,
+   Callback = function(Value) _G.TweenSpeed = Value end,
+})
+
+-- ==================== TAB: VISUALS & FIX LAG ====================
+VisTab:CreateDropdown({
+   Name = Lang.Text[Lang.Current].drop_theme,
+   Options = {"Default", "AmberGlow", "Aqua", "BloodMoon", "Ocean", "Serenity", "GreenLight"},
+   CurrentOption = {"Default"},
+   MultipleOptions = false,
+   Callback = function(Option)
+      if Rayfield.ModifyTheme then Rayfield:ModifyTheme(Option) end
+   end,
+})
+
+VisTab:CreateButton({
+   Name = Lang.Text[Lang.Current].btn_lightlag,
+   Callback = function()
+       game:GetService("Lighting").GlobalShadows = false
+       for _, obj in ipairs(workspace:GetDescendants()) do
+           if obj:IsA("BasePart") and not obj:IsA("MeshPart") then
+               obj.Material = Enum.Material.SmoothPlastic
+           end
+       end
+       Rayfield:Notify({
+          Title = Lang.Text[Lang.Current].notif_title,
+          Content = Lang.Text[Lang.Current].notif_light,
+          Duration = 3
+       })
+   end,
+})
+
+VisTab:CreateButton({
+   Name = Lang.Text[Lang.Current].btn_heavylag,
+   Callback = function()
+-- Kích hoạt hộp thoại cảnh báo đa ngôn ngữ bằng cơ chế Dialog tích hợp sẵn
+Rayfield:CreateWindow():CreateTab("Warning System"):CreateButton({
+Name = Lang.Text[Lang.Current].warn_title .. " " .. Lang.Text[Lang.Current].warn_desc,
+Callback = function() end
+})
+-- Thao tác xác nhận xử lý dọn dẹp sâu đồ họa game
+local function ExecuteUltraFix()
+local lighting = game:GetService("Lighting")
+lighting.GlobalShadows = false
+lighting.FogEnd = 9e9
+for _, effect in ipairs(lighting:GetDescendants() or lighting:GetChildren()) do
+if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") then
+effect.Enabled = false
+end
+end
+for _, obj in ipairs(workspace:GetDescendants()) do
+if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sky") or obj:IsA("Clouds") then
+obj:Destroy()
+elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+obj.Enabled = false
+elseif obj:IsA("BasePart") then
+obj.Material = Enum.Material.SmoothPlastic
+obj.Reflectance = 0
+obj.CastShadow = false
+end
+end
+if settings():GetService("RenderSettings") then
+settings():GetService("RenderSettings").QualityLevel = Enum.QualityLevel.Level01
+end
+Rayfield:Notify({
+Title = Lang.Text[Lang.Current].notif_title,
+Content = Lang.Text[Lang.Current].notif_heavy,
+Duration = 4
+})
+end
+-- Chạy lệnh
+ExecuteUltraFix()
+end,
+})
