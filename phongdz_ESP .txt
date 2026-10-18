@@ -1,0 +1,257 @@
+-- phongdz - Ultimate Mobile Shared Hub (Kavo UI x PhongHub Elite)
+-- Target: Steal an Egg (Roblox Mobile - Delta & Madium Optimized)
+-- Hosting Loader: loadstring(game:HttpGet("https://githubusercontent.com"))()
+
+local Library = loadstring(game:HttpGet("https://githubusercontent.com"))()
+local Window = Library.CreateLib("phongdz Hub - Mobile Elite", "BloodTheme")
+
+-- Hệ thống ngôn ngữ song ngữ tối giản cấu trúc dữ liệu di động
+local Lang = {
+   Current = "VN",
+   Text = {
+      VN = {
+         tab_farm = "Auto Farm", tab_chilli = "Chilli Core", tab_egg = "Ấp & Tiến Hóa", tab_upgrade = "Kinh Tế & Base", tab_vis = "Đồ Họa & ESP",
+         toggle_steal = "Trộm Trứng VIP (To & Hiếm)", toggle_treadmill = "Auto Chạy Máy (Tốc Độ)",
+         toggle_rift = "Ưu Tiên Trứng Cổng Nứt", toggle_collide = "Đi Xuyên Tường & Quái",
+         toggle_anticrash = "Chế Độ Siêu Mượt (Anti-Lag)", toggle_sell = "Tự Động Bán Trứng",
+         toggle_hatch = "Tự Động Mở Trứng", toggle_fuse = "Tự Động Dung Hợp Pet",
+         toggle_base = "Tự Động Nâng Cấp Base", toggle_esp = "Bật ESP Nhìn Xuyên Tường Trứng",
+         toggle_antiafk = "Bật Chống Treo Máy (Anti-AFK)", slider_speed = "Vận Tốc Safe Tween"
+      },
+      EN = {
+         tab_farm = "Auto Farm", tab_chilli = "Chilli Core", tab_egg = "Hatch & Fuse", tab_upgrade = "Economy & Base", tab_vis = "Visuals & ESP",
+         toggle_steal = "Steal High-Value Eggs", toggle_treadmill = "Auto Train Treadmill",
+         toggle_rift = "Prioritize Rift Eggs", toggle_collide = "Disable Collisions (NoClip)",
+         toggle_anticrash = "Performance Mode (Anti-Lag)", toggle_sell = "Auto Sell Eggs",
+         toggle_hatch = "Auto Hatch Eggs", toggle_fuse = "Auto Fuse Pets",
+         toggle_base = "Auto Upgrade Base Plots", toggle_esp = "Enable Egg ESP (Chams)",
+         toggle_antiafk = "Enable Anti-AFK (No Disconnect)", slider_speed = "Safe Tween Speed"
+      }
+   }
+}
+
+local currentText = Lang.Text[Lang.Current]
+
+-- Khởi tạo đầy đủ các phân trang chức năng từ PhongHub sang cấu trúc Kavo
+local FarmTab = Window:NewTab(currentText.tab_farm)
+local ChilliTab = Window:NewTab(currentText.tab_chilli)
+local EggTab = Window:NewTab(currentText.tab_egg)
+local UpgradeTab = Window:NewTab(currentText.tab_upgrade)
+local VisTab = Window:NewTab(currentText.tab_vis)
+
+local FarmSection = FarmTab:NewSection("Egg & Speed Farm")
+local ChilliSection = ChilliTab:NewSection("Chilli Hub Exploits")
+local EggSection = EggTab:NewSection("Hatch & Fuse Systems")
+local UpgradeSection = UpgradeTab:NewSection("Base & Economy")
+local VisSection = VisTab:NewSection("ESP & Optimization")
+
+-- Quản lý trạng thái môi trường toàn cục
+local _G = getgenv and getgenv() or _G
+_G.AutoSteal = false
+_G.AutoTreadmill = false
+_G.PrioritizeRift = false
+_G.AntiCollide = false
+_G.AntiCrash = false
+_G.AutoSell = false
+_G.AutoHatch = false
+_G.AutoFuse = false
+_G.AutoBase = false
+_G.EggESP = false
+_G.AntiAFK = false
+_G.TweenSpeed = 45
+_G.SelectedEggType = "CommonEgg"
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Thuật toán tính toán giá trị trứng tối ưu từ PhongHub (Độ hiếm + Đột biến + Kích thước)
+local function GetAdvancedEggValue(egg)
+    local score = 1
+    local name = egg.Name:lower()
+    if _G.PrioritizeRift and (name:find("rift") or egg:GetAttribute("Rift")) then return 99999 end
+    if name:find("cherry") or name:find("cosmic") or name:find("divine") or name:find("eternal") then score = score + 50
+    elseif name:find("event") or name:find("mythic") then score = score + 30
+    elseif name:find("legendary") then score = score + 20
+    elseif name:find("epic") then score = score + 10 end
+    if name:find("rainbow") or egg:GetAttribute("Rainbow") then score = score * 3.5
+    elseif name:find("parasite") or egg:GetAttribute("Parasite") then score = score * 3.0
+    elseif name:find("golden") or egg:GetAttribute("Golden") then score = score * 2.5 end
+    if name:find("giant") or name:find("large") or (egg:IsA("BasePart") and egg.Size.Magnitude > 8) then score = score * 2.0 end
+    return score
+end
+
+local function SafeMoveTo(targetCFrame)
+    local character = LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local distance = (root.Position - targetCFrame.Position).Magnitude
+    local tweenInfo = TweenInfo.new(distance / _G.TweenSpeed, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+    tween:Play()
+    tween.Completed:Wait()
+    task.wait(0.18)
+end
+
+-- ==================== TRANG 1: AUTO FARM ====================
+FarmSection:NewToggle(currentText.toggle_steal, "Tự động gom trứng xịn nhất bản đồ", function(Value)
+   _G.AutoSteal = Value
+   if Value then
+       task.spawn(function()
+           while _G.AutoSteal do
+               local eggList = {}
+               for _, obj in ipairs(workspace:GetDescendants()) do
+                   if obj:IsA("BasePart") and (obj.Name:lower():find("egg") or obj:GetAttribute("Egg")) then
+                       table.insert(eggList, {Instance = obj, Value = GetAdvancedEggValue(obj)})
+                   end
+               end
+               table.sort(eggList, function(a, b) return a.Value > b.Value end)
+               for _, eggData in ipairs(eggList) do
+                   if not _G.AutoSteal then break end
+                   if eggData.Instance and eggData.Instance.Parent then SafeMoveTo(eggData.Instance.CFrame + Vector3.new(0, 1.5, 0)) end
+               end
+               task.wait(0.5)
+           end
+       end)
+   end
+end)
+
+FarmSection:NewSlider(currentText.slider_speed, "Điều chỉnh tốc độ chạy Tween", 150, 20, function(Value)
+   _G.TweenSpeed = Value
+end)
+
+FarmSection:NewToggle(currentText.toggle_treadmill, "Tự động chạy máy tập tăng chỉ số Tốc độ", function(Value)
+   _G.AutoTreadmill = Value
+   if Value then
+       task.spawn(function()
+           while _G.AutoTreadmill do
+               local localBase = workspace:FindFirstChild("Bases") and workspace.Bases:FindFirstChild(LocalPlayer.Name)
+               local treadmill = localBase and localBase:FindFirstChild("Treadmill") or workspace:FindFirstChild("Treadmill", true)
+               local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+               if root and treadmill then
+                   root.CFrame = treadmill:IsA("Model") and treadmill:GetPivot() or treadmill.CFrame
+                   local trainRemote = game:GetService("ReplicatedStorage"):FindFirstChild("TrainRemote", true) or game:GetService("ReplicatedStorage"):FindFirstChild("TreadmillRemote", true)
+                   if trainRemote and trainRemote:IsA("RemoteEvent") then trainRemote:FireServer() end
+               end
+               task.wait(0.05)
+           end
+       end)
+   end
+end)
+
+-- ==================== TRANG 2: CHILLI CORE EXPLOSIONS ====================
+ChilliSection:NewToggle(currentText.toggle_rift, "Ưu tiên cướp sạch trứng cổng nứt khi xuất hiện", function(Value)
+   _G.PrioritizeRift = Value
+end)
+
+ChilliSection:NewToggle(currentText.toggle_collide, "Vô hiệu hóa va chạm cơ thể (Đi xuyên quái)", function(Value)
+   _G.AntiCollide = Value
+   task.spawn(function()
+       while _G.AntiCollide do
+           local char = LocalPlayer.Character
+           if char then
+               for _, part in ipairs(char:GetDescendants()) do
+                   if part:IsA("BasePart") then part.CanCollide = false end
+               end
+           end
+           task.wait(0.2)
+       end
+   end)
+end)
+
+ChilliSection:NewToggle(currentText.toggle_anticrash, "Bật cấu hình siêu mượt (Ngắt dựng hình 3D)", function(Value)
+   _G.AntiCrash = Value
+   if Value then game:GetService("RunService"):Set3dRenderingEnabled(false) else game:GetService("RunService"):Set3dRenderingEnabled(true) end
+end)
+
+-- ==================== TRANG 3: ẤP & TIẾN HÓA PETS (PHONGHUB) ====================
+EggSection:NewDropdown("Chọn Loại Trứng", "Lựa chọn quả trứng để ấp tự động", {"CommonEgg","RareEgg","EpicEgg","LegendaryEgg","EventEgg"}, function(Option)
+    _G.SelectedEggType = Option
+end)
+
+EggSection:NewToggle(currentText.toggle_hatch, "Tự động gửi gói lệnh mở lồng ấp trứng liên tục", function(Value)
+    _G.AutoHatch = Value
+    if Value then
+        task.spawn(function()
+            while _G.AutoHatch do
+                local remote = game:GetService("ReplicatedStorage"):FindFirstChild("HatchRemote", true) or game:GetService("ReplicatedStorage"):FindFirstChild("OpenEgg", true)
+                if remote and remote:IsA("RemoteEvent") then remote:FireServer(_G.SelectedEggType, 1) end
+                task.wait(1.0)
+            end
+        end)
+    end
+end)
+
+EggSection:NewToggle(currentText.toggle_fuse, "Tự động dung hợp thú cưng cấp thấp thành cấp cao", function(Value)
+    _G.AutoFuse = Value
+    if Value then
+        task.spawn(function()
+            while _G.AutoFuse do
+                local fuseRemote = game:GetService("ReplicatedStorage"):FindFirstChild("FuseRemote", true) or game:GetService("ReplicatedStorage"):FindFirstChild("AutoFusePets", true)
+                if fuseRemote and fuseRemote:IsA("RemoteEvent") then fuseRemote:FireServer() end
+                task.wait(5.0)
+            end
+        end)
+    end
+end)
+
+-- ==================== TRANG 4: KINH TẾ & CĂN CỨ ====================
+UpgradeSection:NewToggle(currentText.toggle_sell, "Tự động dịch chuyển về tổ bán trứng khi rương đầy", function(Value)
+   _G.AutoSell = Value
+   if Value then
+       task.spawn(function()
+           while _G.AutoSell do
+               local sellPart = workspace:FindFirstChild("SellArea") or workspace:FindFirstChild("Sell", true)
+               if sellPart then
+                   local currentCFrame = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.CFrame
+SafeMoveTo(sellPart:IsA("Model") and sellPart:GetPivot() or sellPart.CFrame)
+task.wait(0.3)
+if currentCFrame then SafeMoveTo(currentCFrame) end
+end
+task.wait(5.0)
+end
+end)
+end
+end)
+UpgradeSection:NewToggle(currentText.toggle_base, "Tự động mua thêm đất đai nâng sức chứa trang trại", function(Value)
+_G.AutoBase = Value
+if Value then
+task.spawn(function()
+while _G.AutoBase do
+local baseRemote = game:GetService("ReplicatedStorage"):FindFirstChild("UpgradeBase", true) or game:GetService("ReplicatedStorage"):FindFirstChild("BuyPlot", true)
+if baseRemote and baseRemote:IsA("RemoteEvent") then baseRemote:FireServer() end
+task.wait(3.0)
+end
+end)
+end
+end)
+-- ==================== TRANG 5: ĐỒ HỌA & TIỆN ÍCH ESP nhìn xuyên tường ====================
+VisSection:NewToggle(currentText.toggle_esp, "Hiển thị khung sáng bao bọc vị trí trứng", function(Value)
+_G.EggESP = Value
+if Value then
+task.spawn(function()
+while _G.EggESP do
+for _, obj in ipairs(workspace:GetDescendants()) do
+if obj:IsA("BasePart") and (obj.Name:lower():find("egg") or obj:GetAttribute("Egg")) then
+if not obj:FindFirstChild("phongdz_ESP") then
+local box = Instance.new("BoxHandleAdornment")
+box.Name = "phongdz_ESP"
+box.Size = obj.Size + Vector3.new(0.1, 0.1, 0.1)
+box.AlwaysOnTop, box.ZIndex, box.Color3, box.Adornee, box.Parent = true, 5, Color3.fromRGB(0, 255, 255), obj, obj
+end
+end
+end
+task.wait(2.0)
+end
+end)
+else
+for _, obj in ipairs(workspace:GetDescendants()) do if obj:FindFirstChild("phongdz_ESP") then obj["phongdz_ESP"]:Destroy() end end
+end
+end)
+VisSection:NewToggle(currentText.toggle_antiafk, "Phòng chống hệ thống tự động ngắt kết nối AFK", function(Value)
+_G.AntiAFK = Value
+if Value then
+local vu = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function() if _G.AntiAFK then vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame) task.wait(1) vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end end)
+end
+end)
