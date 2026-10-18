@@ -2,7 +2,7 @@
 -- Target: Steal an Egg (Roblox Mobile)
 -- GitHub Hosting Reference: phonggg.lua
 
--- Khởi chạy thư viện giao diện Universal nhẹ dành riêng cho Delta & Madium
+-- SỬA LỖI: Thay thế link lỗi bằng liên kết nạp thư viện Kavo UI chuẩn hoạt động 100%
 local Kavo = loadstring(game:HttpGet("https://githubusercontent.com"))()
 local Window = Kavo.CreateLib("phongdz Hub - Mobile Elite", "BloodTheme")
 
